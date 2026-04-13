@@ -40,8 +40,6 @@ echo "$WRITEDIR created"
 #make clean
 #make
 
- make clean
- make
 
 
 for i in $( seq 1 $NUMFILES)

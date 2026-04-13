@@ -1,4 +1,10 @@
 #include "systemcalls.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <fcntl.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -10,6 +16,14 @@
 bool do_system(const char *cmd)
 {
 
+   int ret = system(cmd);
+   if(ret==-1){
+	return false;
+   }
+   if (WIFEXITED(ret) && WEXITSTATUS(ret)==0){
+   	return true;
+   }
+   return false;
 /*
  * TODO  add your code here
  *  Call the system() function with the command set in the cmd
@@ -17,7 +31,6 @@ bool do_system(const char *cmd)
  *   or false() if it returned a failure
 */
 
-    return true;
 }
 
 /**
@@ -47,8 +60,7 @@ bool do_exec(int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
-
+    // command[count] == command[count]
 /*
  * TODO:
  *   Execute a system command by calling fork, execv(),
@@ -60,8 +72,21 @@ bool do_exec(int count, ...)
 */
 
     va_end(args);
-
-    return true;
+   
+   pid_t pid = fork();
+   if (pid==-1){
+  	return false;
+   }else if (pid==0){
+	execv(command[0], command);
+	exit(EXIT_FAILURE);
+   }else{
+   	int status;
+	waitpid(pid, &status, 0);
+	if(WIFEXITED(status) && WEXITSTATUS(status)==0){
+		return true;
+        }
+	return false;
+   }
 }
 
 /**
@@ -82,7 +107,7 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
+   // command[count] = command[count];
 
 
 /*
@@ -95,5 +120,28 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
 
     va_end(args);
 
-    return true;
+   pid_t pid = fork();
+   if(pid==-1){
+	return false;
+   }else if (pid==0){
+	int fd = open(outputfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (fd==-1){
+	   exit(EXIT_FAILURE);
+	}
+	if(dup2(fd, STDOUT_FILENO)==-1){
+		close(fd);
+		exit(EXIT_FAILURE);
+	}
+	close(fd);
+
+	execv(command[0], command);
+	exit(EXIT_FAILURE);
+   }else{
+	int status;
+	waitpid(pid, &status, 0);
+	if (WIFEXITED(status)&& WEXITSTATUS(status)==0){
+		return true;
+	}
+	return false;
+   }
 }
